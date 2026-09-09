@@ -1,6 +1,20 @@
+import hashlib
 import random
 
 from PIL import Image, UnidentifiedImageError
+
+
+def dedupe_by_hash(items):
+    seen = set()
+    result = []
+    for path, label in items:
+        with Image.open(path) as img:
+            digest = hashlib.md5(img.convert("RGB").tobytes()).hexdigest()
+        if digest in seen:
+            continue
+        seen.add(digest)
+        result.append((path, label))
+    return result
 
 
 def filter_corrupt(items):
