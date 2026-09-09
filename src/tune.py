@@ -81,6 +81,7 @@ def main(argv=None):
     configs = sample_configs(SEARCH_SPACE, n_trials=args.n_trials, seed=args.seed)
     results = []
     for i, config in enumerate(configs):
+        print(f"[trial {i + 1}/{len(configs)}] config={config}", flush=True)
         work_dir = out_dir / f"trial_{i}"
         result = run_trial(
             config, model=args.model, mode=args.mode,
@@ -88,6 +89,7 @@ def main(argv=None):
             epochs=args.epochs_per_trial, work_dir=work_dir,
         )
         results.append(result)
+        print(f"[trial {i + 1}/{len(configs)}] val_loss={result['val_loss']:.4f} val_acc={result['val_acc']:.4f}", flush=True)
 
     with open(out_dir / "results.csv", "w", newline="") as f:
         fieldnames = list(SEARCH_SPACE.keys()) + ["val_loss", "val_acc"]

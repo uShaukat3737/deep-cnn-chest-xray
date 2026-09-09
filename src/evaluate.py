@@ -134,16 +134,19 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"evaluating {args.model}/{args.mode} on {device}", flush=True)
     model = _build_model(args.model, args.mode)
     model.load_state_dict(torch.load(args.checkpoint, map_location=device))
 
     _, val_tf = build_transforms()
     test_ds = ChestXrayDataset(args.test_manifest, transform=val_tf)
     test_loader = DataLoader(test_ds, batch_size=32)
+    print(f"running inference on {len(test_ds)} test samples", flush=True)
 
     y_true, y_pred, y_prob = predict(model, test_loader, device)
     metrics = compute_metrics(y_true, y_pred)
     auc = compute_auc_roc(y_true, y_prob)
+    print(f"accuracy={metrics['accuracy']:.4f} macro_f1={metrics['macro']['f1']:.4f} auc_roc={auc:.4f}", flush=True)
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
