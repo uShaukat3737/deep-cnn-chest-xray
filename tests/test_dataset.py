@@ -2,7 +2,7 @@ import csv
 
 import torch
 
-from src.dataset import ChestXrayDataset, build_transforms
+from src.dataset import ChestXrayDataset, build_sample_weights, build_transforms
 
 
 def test_train_transform_is_stochastic_val_transform_is_deterministic():
@@ -46,3 +46,12 @@ def test_chest_xray_dataset_returns_tensor_and_int_label(tmp_path):
 
     _, label2 = ds[1]
     assert label2 == 1
+
+
+def test_build_sample_weights_gives_minority_class_higher_weight():
+    labels = [0, 0, 0, 1]  # 3 NORMAL, 1 PNEUMONIA
+    weights = build_sample_weights(labels)
+
+    assert len(weights) == 4
+    assert weights[3] > weights[0]
+    assert weights[0] == weights[1] == weights[2]
