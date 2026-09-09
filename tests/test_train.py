@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 
-from src.train import Checkpointer, EarlyStopping, train_one_epoch
+import csv
+
+from src.train import Checkpointer, EarlyStopping, main, train_one_epoch
 
 
 def test_early_stopping_triggers_after_patience_non_improving_epochs():
@@ -55,3 +57,45 @@ def test_train_one_epoch_reduces_loss_on_synthetic_batch():
 
     assert isinstance(avg_loss, float)
     assert loss_after < loss_before
+
+
+def _write_manifest(path, n_per_class=4):
+    from PIL import Image
+
+    img_dir = path.parent / "imgs"
+    img_dir.mkdir(exist_ok=True)
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["path", "label"])
+        for label in ("NORMAL", "PNEUMONIA"):
+            for i in range(n_per_class):
+                img_path = img_dir / f"{label}_{i}.jpg"
+                Image.new("RGB", (32, 32), (i * 10, 0, 0)).save(img_path)
+                writer.writerow([str(img_path), label])
+
+
+def test_main_trains_cnn_and_writes_checkpoint_and_log(tmp_path):
+    train_manifest = tmp_path / "train.csv"
+    val_manifest = tmp_path / "val.csv"
+    _write_manifest(train_manifest)
+    _write_manifest(val_manifest)
+
+    checkpoint_dir = tmp_path / "checkpoints"
+    log_path = tmp_path / "log.csv"
+
+    main([
+        "--model", "cnn",
+        "--mode", "scratch",
+        "--train-manifest", str(train_manifest),
+        "--val-manifest", str(val_manifest),
+        "--epochs", "1",
+        "--batch-size", "4",
+        "--checkpoint-dir", str(checkpoint_dir),
+        "--log-path", str(log_path),
+    ])
+
+    assert (checkpoint_dir / "cnn_scratch_best.pth").exists()
+    with open(log_path) as f:
+        rows = list(csv.reader(f))
+    assert rows[0] == ["epoch", "train_loss", "val_loss", "val_acc"]
+    assert len(rows) == 2
