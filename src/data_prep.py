@@ -1,7 +1,17 @@
 import hashlib
 import random
+from pathlib import Path
 
 from PIL import Image, UnidentifiedImageError
+
+
+def discover_images(root):
+    root = Path(root)
+    return [
+        (str(path), path.parent.name)
+        for path in root.glob("*/*")
+        if path.is_file()
+    ]
 
 
 def dedupe_by_hash(items):
