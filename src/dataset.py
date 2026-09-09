@@ -1,4 +1,5 @@
 import csv
+from collections import Counter
 
 from PIL import Image
 from torch.utils.data import Dataset
@@ -46,3 +47,8 @@ class ChestXrayDataset(Dataset):
         path, label = self.items[idx]
         img = Image.open(path).convert("RGB")
         return self.transform(img), LABEL_TO_IDX[label]
+
+
+def build_sample_weights(labels):
+    counts = Counter(labels)
+    return [1.0 / counts[label] for label in labels]
