@@ -2,7 +2,7 @@ import csv
 
 import torch
 
-from src.dataset import ChestXrayDataset, build_sample_weights, build_transforms
+from src.dataset import ChestXrayDataset, build_sample_weights, build_transforms, compute_dataset_stats
 
 
 def test_train_transform_is_stochastic_val_transform_is_deterministic():
@@ -55,3 +55,25 @@ def test_build_sample_weights_gives_minority_class_higher_weight():
     assert len(weights) == 4
     assert weights[3] > weights[0]
     assert weights[0] == weights[1] == weights[2]
+
+
+def test_compute_dataset_stats_returns_mean_std_from_manifest(tmp_path):
+    from PIL import Image
+
+    manifest = tmp_path / "manifest.csv"
+    img1 = tmp_path / "a.jpg"
+    img2 = tmp_path / "b.jpg"
+    Image.new("RGB", (10, 10), (0, 0, 0)).save(img1)
+    Image.new("RGB", (10, 10), (255, 255, 255)).save(img2)
+    with open(manifest, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["path", "label"])
+        writer.writerow([str(img1), "NORMAL"])
+        writer.writerow([str(img2), "PNEUMONIA"])
+
+    mean, std = compute_dataset_stats(manifest)
+
+    assert len(mean) == 3
+    assert len(std) == 3
+    for m in mean:
+        assert 0.4 < m < 0.6  # black + white average ~= mid-gray
