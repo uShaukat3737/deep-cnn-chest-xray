@@ -2,7 +2,14 @@ from PIL import Image
 
 import csv
 
-from src.data_prep import dedupe_by_hash, discover_images, filter_corrupt, main, stratified_split
+from src.data_prep import (
+    dedupe_by_hash,
+    discover_images,
+    filter_corrupt,
+    main,
+    stratified_split,
+    subsample_by_fraction,
+)
 
 
 def test_stratified_split_ratios_and_no_overlap():
@@ -95,3 +102,16 @@ def test_main_writes_split_manifests(tmp_path):
     with open(out_dir / "test.csv") as f:
         test_rows = list(csv.reader(f))[1:]
     assert not ({r[0] for r in train_rows} & {r[0] for r in test_rows})
+
+
+def test_subsample_by_fraction_preserves_class_ratio_and_is_deterministic():
+    items = [(f"n{i}.jpg", "NORMAL") for i in range(40)] + [
+        (f"p{i}.jpg", "PNEUMONIA") for i in range(80)
+    ]
+
+    result_a = subsample_by_fraction(items, fraction=0.5, seed=42)
+    result_b = subsample_by_fraction(items, fraction=0.5, seed=42)
+
+    assert result_a == result_b
+    assert sum(1 for _, l in result_a if l == "NORMAL") == 20
+    assert sum(1 for _, l in result_a if l == "PNEUMONIA") == 40
