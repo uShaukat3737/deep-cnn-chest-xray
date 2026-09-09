@@ -1,9 +1,10 @@
+import pytest
 import torch
 import torch.nn as nn
 
 import csv
 
-from src.train import Checkpointer, EarlyStopping, main, train_one_epoch
+from src.train import Checkpointer, EarlyStopping, l1_penalty, main, train_one_epoch
 
 
 def test_early_stopping_triggers_after_patience_non_improving_epochs():
@@ -59,6 +60,18 @@ def test_train_one_epoch_reduces_loss_on_synthetic_batch():
     assert loss_after < loss_before
 
 
+def test_l1_penalty_scales_with_lambda_and_weight_magnitude():
+    model = nn.Linear(2, 2, bias=False)
+    with torch.no_grad():
+        model.weight.fill_(2.0)
+
+    zero_penalty = l1_penalty(model, lam=0.0)
+    nonzero_penalty = l1_penalty(model, lam=0.1)
+
+    assert zero_penalty.item() == 0.0
+    assert nonzero_penalty.item() == pytest.approx(0.1 * (2.0 * 4))
+
+
 def _write_manifest(path, n_per_class=4):
     from PIL import Image
 
@@ -99,3 +112,29 @@ def test_main_trains_cnn_and_writes_checkpoint_and_log(tmp_path):
         rows = list(csv.reader(f))
     assert rows[0] == ["epoch", "train_loss", "val_loss", "val_acc"]
     assert len(rows) == 2
+
+
+def test_main_accepts_norm_scheme_augmentation_and_l1_flags(tmp_path):
+    train_manifest = tmp_path / "train.csv"
+    val_manifest = tmp_path / "val.csv"
+    _write_manifest(train_manifest)
+    _write_manifest(val_manifest)
+
+    checkpoint_dir = tmp_path / "checkpoints"
+    log_path = tmp_path / "log.csv"
+
+    main([
+        "--model", "cnn",
+        "--mode", "scratch",
+        "--train-manifest", str(train_manifest),
+        "--val-manifest", str(val_manifest),
+        "--epochs", "1",
+        "--batch-size", "4",
+        "--checkpoint-dir", str(checkpoint_dir),
+        "--log-path", str(log_path),
+        "--norm-scheme", "dataset_stats",
+        "--augmentation", "off",
+        "--l1", "1e-4",
+    ])
+
+    assert (checkpoint_dir / "cnn_scratch_best.pth").exists()

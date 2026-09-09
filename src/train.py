@@ -6,19 +6,30 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, WeightedRandomSampler
 
-from src.dataset import ChestXrayDataset, build_sample_weights, build_transforms
+from src.dataset import (
+    IMAGENET_MEAN,
+    IMAGENET_STD,
+    ChestXrayDataset,
+    build_sample_weights,
+    build_transforms,
+    compute_dataset_stats,
+)
 from src.models.cnn import ChestCNN
 from src.models.pretrained import build_model
 
 
-def train_one_epoch(model, loader, optimizer, criterion, device, clip_norm=1.0):
+def l1_penalty(model, lam):
+    return lam * sum(p.abs().sum() for p in model.parameters())
+
+
+def train_one_epoch(model, loader, optimizer, criterion, device, clip_norm=1.0, l1_lambda=0.0):
     model.to(device)
     model.train()
     total_loss = 0.0
     for x, y in loader:
         x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
-        loss = criterion(model(x), y)
+        loss = criterion(model(x), y) + l1_penalty(model, l1_lambda)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), clip_norm)
         optimizer.step()
@@ -88,12 +99,24 @@ def main(argv=None):
     parser.add_argument("--dropout", type=float, default=0.5)
     parser.add_argument("--patience", type=int, default=5)
     parser.add_argument("--weight-decay", type=float, default=0.0)
+    parser.add_argument("--l1", type=float, default=0.0)
+    parser.add_argument("--norm-scheme", choices=["imagenet", "dataset_stats"], default="imagenet")
+    parser.add_argument("--augmentation", choices=["on", "off"], default="on")
     parser.add_argument("--checkpoint-dir", required=True)
     parser.add_argument("--log-path", required=True)
     args = parser.parse_args(argv)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    train_tf, val_tf = build_transforms()
+
+    if args.norm_scheme == "dataset_stats":
+        mean, std = compute_dataset_stats(args.train_manifest)
+    else:
+        mean, std = IMAGENET_MEAN, IMAGENET_STD
+
+    train_tf, val_tf = build_transforms(mean=mean, std=std)
+    if args.augmentation == "off":
+        train_tf = val_tf
+
     train_ds = ChestXrayDataset(args.train_manifest, transform=train_tf)
     val_ds = ChestXrayDataset(args.val_manifest, transform=val_tf)
 
@@ -123,7 +146,7 @@ def main(argv=None):
         writer.writerow(["epoch", "train_loss", "val_loss", "val_acc"])
 
         for epoch in range(args.epochs):
-            train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
+            train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device, l1_lambda=args.l1)
             val_loss, val_acc = evaluate(model, val_loader, criterion, device)
             scheduler.step(val_loss)
             checkpointer.step(model, val_loss)

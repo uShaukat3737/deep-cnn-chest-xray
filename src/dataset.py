@@ -49,6 +49,22 @@ class ChestXrayDataset(Dataset):
         return self.transform(img), LABEL_TO_IDX[label]
 
 
+def compute_dataset_stats(manifest_path):
+    to_tensor = transforms.Compose([
+        transforms.Grayscale(num_output_channels=3),
+        transforms.Resize((IMG_SIZE, IMG_SIZE)),
+        transforms.ToTensor(),
+    ])
+    ds = ChestXrayDataset(manifest_path, transform=to_tensor)
+    pixels = [ds[i][0] for i in range(len(ds))]
+    stacked = pixels[0].new_empty((len(pixels), *pixels[0].shape))
+    for i, p in enumerate(pixels):
+        stacked[i] = p
+    mean = stacked.mean(dim=(0, 2, 3)).tolist()
+    std = stacked.std(dim=(0, 2, 3)).tolist()
+    return mean, std
+
+
 def build_sample_weights(labels):
     counts = Counter(labels)
     return [1.0 / counts[label] for label in labels]
