@@ -18,6 +18,26 @@ def _precision_recall_f1(matrix, cls):
     return {"precision": precision, "recall": recall, "f1": f1}
 
 
+def compute_auc_roc(y_true, y_scores):
+    # Mann-Whitney U statistic == AUC-ROC; average ranks handle score ties.
+    order = sorted(range(len(y_scores)), key=lambda i: y_scores[i])
+    ranks = [0.0] * len(y_scores)
+    i = 0
+    while i < len(order):
+        j = i
+        while j < len(order) and y_scores[order[j]] == y_scores[order[i]]:
+            j += 1
+        avg_rank = (i + 1 + j) / 2
+        for k in range(i, j):
+            ranks[order[k]] = avg_rank
+        i = j
+
+    n_pos = sum(1 for t in y_true if t == 1)
+    n_neg = len(y_true) - n_pos
+    rank_sum_pos = sum(ranks[i] for i in range(len(y_true)) if y_true[i] == 1)
+    return (rank_sum_pos - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg)
+
+
 def compute_metrics(y_true, y_pred):
     matrix = _confusion_matrix(y_true, y_pred)
     accuracy = sum(matrix[i][i] for i in range(NUM_CLASSES)) / len(y_true)
