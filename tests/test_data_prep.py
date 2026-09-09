@@ -1,4 +1,6 @@
-from src.data_prep import stratified_split
+from PIL import Image
+
+from src.data_prep import filter_corrupt, stratified_split
 
 
 def test_stratified_split_ratios_and_no_overlap():
@@ -20,3 +22,15 @@ def test_stratified_split_ratios_and_no_overlap():
         total = sum(1 for _, l in items if l == label)
         train_count = sum(1 for _, l in train if l == label)
         assert train_count == round(total * 0.8)
+
+
+def test_filter_corrupt_excludes_unreadable_files(tmp_path):
+    good = tmp_path / "good.jpg"
+    Image.new("RGB", (10, 10), "white").save(good)
+    bad = tmp_path / "bad.jpg"
+    bad.write_bytes(b"not an image")
+
+    items = [(str(good), "NORMAL"), (str(bad), "NORMAL")]
+    result = filter_corrupt(items)
+
+    assert result == [(str(good), "NORMAL")]
