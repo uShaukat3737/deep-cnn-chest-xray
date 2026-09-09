@@ -1,6 +1,8 @@
 from PIL import Image
 
-from src.data_prep import dedupe_by_hash, discover_images, filter_corrupt, stratified_split
+import csv
+
+from src.data_prep import dedupe_by_hash, discover_images, filter_corrupt, main, stratified_split
 
 
 def test_stratified_split_ratios_and_no_overlap():
@@ -68,3 +70,28 @@ def test_discover_images_labels_by_parent_dir(tmp_path):
         (str(pneu_dir / "p1.jpg"), "PNEUMONIA"),
         (str(pneu_dir / "p2.jpg"), "PNEUMONIA"),
     ])
+
+
+def test_main_writes_split_manifests(tmp_path):
+    normal_dir = tmp_path / "NORMAL"
+    pneu_dir = tmp_path / "PNEUMONIA"
+    normal_dir.mkdir()
+    pneu_dir.mkdir()
+    for i in range(10):
+        Image.new("RGB", (5, 5), "white").save(normal_dir / f"n{i}.jpg")
+    for i in range(10):
+        Image.new("RGB", (5, 5), (i, 0, 0)).save(pneu_dir / f"p{i}.jpg")
+
+    out_dir = tmp_path / "manifests"
+    main(["--data-dir", str(tmp_path), "--out-dir", str(out_dir), "--seed", "42"])
+
+    for split in ("train", "val", "test"):
+        with open(out_dir / f"{split}.csv") as f:
+            rows = list(csv.reader(f))
+        assert rows[0] == ["path", "label"]
+
+    with open(out_dir / "train.csv") as f:
+        train_rows = list(csv.reader(f))[1:]
+    with open(out_dir / "test.csv") as f:
+        test_rows = list(csv.reader(f))[1:]
+    assert not ({r[0] for r in train_rows} & {r[0] for r in test_rows})
