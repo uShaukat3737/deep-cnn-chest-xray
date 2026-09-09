@@ -2,7 +2,9 @@ import pytest
 import torch
 import torch.nn as nn
 
-from src.evaluate import compute_auc_roc, compute_metrics, predict
+import csv
+
+from src.evaluate import compute_auc_roc, compute_metrics, main, predict
 
 
 def test_compute_metrics_matches_hand_computed_confusion_case():
@@ -54,3 +56,42 @@ def test_predict_returns_true_pred_and_prob_lists():
     assert y_true == [0, 1, 0, 1, 0]
     assert len(y_pred) == 5
     assert all(0.0 <= p <= 1.0 for p in y_prob)
+
+
+def test_main_evaluates_checkpoint_and_appends_comparison_row(tmp_path):
+    from PIL import Image
+
+    from src.models.cnn import ChestCNN
+
+    img_dir = tmp_path / "imgs"
+    img_dir.mkdir()
+    manifest = tmp_path / "test.csv"
+    with open(manifest, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["path", "label"])
+        for label in ("NORMAL", "PNEUMONIA"):
+            for i in range(3):
+                img_path = img_dir / f"{label}_{i}.jpg"
+                Image.new("RGB", (32, 32), (i * 10, 0, 0)).save(img_path)
+                writer.writerow([str(img_path), label])
+
+    checkpoint_path = tmp_path / "model.pth"
+    torch.save(ChestCNN(num_classes=2).state_dict(), checkpoint_path)
+
+    out_dir = tmp_path / "eval_out"
+    comparison_csv = tmp_path / "comparison.csv"
+
+    main([
+        "--model", "cnn",
+        "--mode", "scratch",
+        "--checkpoint", str(checkpoint_path),
+        "--test-manifest", str(manifest),
+        "--out-dir", str(out_dir),
+        "--comparison-csv", str(comparison_csv),
+    ])
+
+    with open(comparison_csv) as f:
+        rows = list(csv.DictReader(f))
+    assert len(rows) == 1
+    assert rows[0]["model"] == "cnn"
+    assert {"accuracy", "macro_precision", "macro_recall", "macro_f1", "auc_roc"} <= set(rows[0].keys())
