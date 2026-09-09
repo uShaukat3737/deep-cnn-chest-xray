@@ -1,9 +1,10 @@
+import pytest
 import torch
 import torch.nn as nn
 
 import csv
 
-from src.train import Checkpointer, EarlyStopping, main, train_one_epoch
+from src.train import Checkpointer, EarlyStopping, l1_penalty, main, train_one_epoch
 
 
 def test_early_stopping_triggers_after_patience_non_improving_epochs():
@@ -57,6 +58,18 @@ def test_train_one_epoch_reduces_loss_on_synthetic_batch():
 
     assert isinstance(avg_loss, float)
     assert loss_after < loss_before
+
+
+def test_l1_penalty_scales_with_lambda_and_weight_magnitude():
+    model = nn.Linear(2, 2, bias=False)
+    with torch.no_grad():
+        model.weight.fill_(2.0)
+
+    zero_penalty = l1_penalty(model, lam=0.0)
+    nonzero_penalty = l1_penalty(model, lam=0.1)
+
+    assert zero_penalty.item() == 0.0
+    assert nonzero_penalty.item() == pytest.approx(0.1 * (2.0 * 4))
 
 
 def _write_manifest(path, n_per_class=4):
