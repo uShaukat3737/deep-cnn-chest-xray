@@ -152,8 +152,10 @@ def main(argv=None):
             checkpointer.step(model, val_loss)
             writer.writerow([epoch, train_loss, val_loss, val_acc])
             f.flush()
+            print(f"epoch {epoch}: train_loss={train_loss:.4f} val_loss={val_loss:.4f} val_acc={val_acc:.4f}", flush=True)
 
             if early_stopper.step(val_loss):
+                print(f"early stopping at epoch {epoch}")
                 break
 
 
