@@ -1,6 +1,6 @@
 from PIL import Image
 
-from src.data_prep import dedupe_by_hash, filter_corrupt, stratified_split
+from src.data_prep import dedupe_by_hash, discover_images, filter_corrupt, stratified_split
 
 
 def test_stratified_split_ratios_and_no_overlap():
@@ -50,3 +50,21 @@ def test_dedupe_by_hash_drops_identical_pixel_content(tmp_path):
     assert len(result) == 2
     assert (str(a), "NORMAL") in result
     assert (str(c), "NORMAL") in result
+
+
+def test_discover_images_labels_by_parent_dir(tmp_path):
+    normal_dir = tmp_path / "NORMAL"
+    pneu_dir = tmp_path / "PNEUMONIA"
+    normal_dir.mkdir()
+    pneu_dir.mkdir()
+    (normal_dir / "n1.jpg").touch()
+    (pneu_dir / "p1.jpg").touch()
+    (pneu_dir / "p2.jpg").touch()
+
+    result = discover_images(tmp_path)
+
+    assert sorted(result) == sorted([
+        (str(normal_dir / "n1.jpg"), "NORMAL"),
+        (str(pneu_dir / "p1.jpg"), "PNEUMONIA"),
+        (str(pneu_dir / "p2.jpg"), "PNEUMONIA"),
+    ])
