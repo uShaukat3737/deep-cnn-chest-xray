@@ -9,6 +9,7 @@ SEARCH_SPACE = {
     "lr": [1e-2, 1e-3, 1e-4],
     "dropout": [0.2, 0.5],
     "patience": [3, 5],
+    "l1": [0.0, 1e-5],
     "l2": [0.0, 1e-4, 1e-3],
     "norm_scheme": ["imagenet", "dataset_stats"],
     "augmentation": ["on", "off"],
@@ -39,6 +40,9 @@ def run_trial(config, model, mode, train_manifest, val_manifest, epochs, work_di
         "--dropout", str(config.get("dropout", 0.5)),
         "--patience", str(config.get("patience", 5)),
         "--weight-decay", str(config.get("l2", 0.0)),
+        "--l1", str(config.get("l1", 0.0)),
+        "--norm-scheme", config.get("norm_scheme", "imagenet"),
+        "--augmentation", config.get("augmentation", "on"),
         "--checkpoint-dir", str(checkpoint_dir),
         "--log-path", str(log_path),
     ])
