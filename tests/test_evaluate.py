@@ -1,6 +1,8 @@
 import pytest
+import torch
+import torch.nn as nn
 
-from src.evaluate import compute_auc_roc, compute_metrics
+from src.evaluate import compute_auc_roc, compute_metrics, predict
 
 
 def test_compute_metrics_matches_hand_computed_confusion_case():
@@ -38,3 +40,17 @@ def test_compute_auc_roc_random_guessing_gives_half():
     auc = compute_auc_roc(y_true, y_scores)
 
     assert auc == pytest.approx(0.5)
+
+
+def test_predict_returns_true_pred_and_prob_lists():
+    torch.manual_seed(0)
+    model = nn.Linear(4, 2)
+    x1, y1 = torch.randn(3, 4), torch.tensor([0, 1, 0])
+    x2, y2 = torch.randn(2, 4), torch.tensor([1, 0])
+    loader = [(x1, y1), (x2, y2)]
+
+    y_true, y_pred, y_prob = predict(model, loader, device="cpu")
+
+    assert y_true == [0, 1, 0, 1, 0]
+    assert len(y_pred) == 5
+    assert all(0.0 <= p <= 1.0 for p in y_prob)
