@@ -1,6 +1,6 @@
 import csv
 
-from src.tune import build_summary_table, run_trial, sample_configs
+from src.tune import build_summary_table, main, run_trial, sample_configs
 
 
 def test_sample_configs_returns_unique_deterministic_configs():
@@ -76,3 +76,32 @@ def test_build_summary_table_reports_range_and_optimal_from_best_trial():
     assert rows_by_name["batch_size"]["range"] == [16, 32]
     assert rows_by_name["batch_size"]["optimal"] == 32
     assert rows_by_name["lr"]["optimal"] == 1e-3
+
+
+def test_main_runs_search_and_writes_results_and_summary(tmp_path):
+    train_manifest = tmp_path / "train.csv"
+    val_manifest = tmp_path / "val.csv"
+    _write_manifest(train_manifest)
+    _write_manifest(val_manifest)
+
+    out_dir = tmp_path / "search"
+
+    main([
+        "--model", "cnn",
+        "--mode", "scratch",
+        "--train-manifest", str(train_manifest),
+        "--val-manifest", str(val_manifest),
+        "--n-trials", "2",
+        "--epochs-per-trial", "1",
+        "--seed", "42",
+        "--out-dir", str(out_dir),
+    ])
+
+    with open(out_dir / "results.csv") as f:
+        results_rows = list(csv.DictReader(f))
+    assert len(results_rows) == 2
+    assert "val_loss" in results_rows[0]
+
+    with open(out_dir / "summary.csv") as f:
+        summary_rows = list(csv.DictReader(f))
+    assert {"hyperparameter", "range", "optimal"} <= set(summary_rows[0].keys())
