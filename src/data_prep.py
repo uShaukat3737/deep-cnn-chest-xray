@@ -12,7 +12,7 @@ def discover_images(root):
     root = Path(root)
     return [
         (str(path), path.parent.name)
-        for path in root.glob("*/*")
+        for path in root.rglob("*")
         if path.is_file()
     ]
 
