@@ -1,6 +1,6 @@
 import pytest
 
-from src.evaluate import compute_metrics
+from src.evaluate import compute_auc_roc, compute_metrics
 
 
 def test_compute_metrics_matches_hand_computed_confusion_case():
@@ -20,3 +20,12 @@ def test_compute_metrics_matches_hand_computed_confusion_case():
     assert metrics["macro"]["precision"] == pytest.approx(0.75)
     assert metrics["macro"]["recall"] == pytest.approx(0.75)
     assert metrics["macro"]["f1"] == pytest.approx(0.75)
+
+
+def test_compute_auc_roc_perfect_separation_gives_one():
+    y_true = [0, 0, 1, 1]
+    y_scores = [0.1, 0.2, 0.8, 0.9]
+
+    auc = compute_auc_roc(y_true, y_scores)
+
+    assert auc == pytest.approx(1.0)
