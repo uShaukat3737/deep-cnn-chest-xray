@@ -29,3 +29,12 @@ def test_compute_auc_roc_perfect_separation_gives_one():
     auc = compute_auc_roc(y_true, y_scores)
 
     assert auc == pytest.approx(1.0)
+
+
+def test_compute_auc_roc_random_guessing_gives_half():
+    y_true = [0, 1, 0, 1]
+    y_scores = [0.5, 0.5, 0.5, 0.5]
+
+    auc = compute_auc_roc(y_true, y_scores)
+
+    assert auc == pytest.approx(0.5)
