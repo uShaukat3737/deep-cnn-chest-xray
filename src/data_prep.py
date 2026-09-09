@@ -1,5 +1,8 @@
+import argparse
+import csv
 import hashlib
 import random
+from collections import Counter
 from pathlib import Path
 
 from PIL import Image, UnidentifiedImageError
@@ -57,3 +60,33 @@ def stratified_split(items, seed, ratios=(0.8, 0.1, 0.1)):
         test.extend(shuffled[n_train + n_val:])
 
     return train, val, test
+
+
+def _write_manifest(path, items):
+    with open(path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["path", "label"])
+        writer.writerows(items)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data-dir", required=True)
+    parser.add_argument("--out-dir", required=True)
+    parser.add_argument("--seed", type=int, default=42)
+    args = parser.parse_args(argv)
+
+    items = discover_images(args.data_dir)
+    items = filter_corrupt(items)
+    items = dedupe_by_hash(items)
+    train, val, test = stratified_split(items, seed=args.seed)
+
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for split_name, split_items in (("train", train), ("val", val), ("test", test)):
+        _write_manifest(out_dir / f"{split_name}.csv", split_items)
+        print(f"{split_name}: {len(split_items)} ({dict(Counter(l for _, l in split_items))})")
+
+
+if __name__ == "__main__":
+    main()
