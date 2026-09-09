@@ -79,6 +79,22 @@ def test_discover_images_labels_by_parent_dir(tmp_path):
     ])
 
 
+def test_discover_images_finds_files_nested_under_split_dirs(tmp_path):
+    train_normal = tmp_path / "train" / "NORMAL"
+    test_pneu = tmp_path / "test" / "PNEUMONIA"
+    train_normal.mkdir(parents=True)
+    test_pneu.mkdir(parents=True)
+    (train_normal / "n1.jpg").touch()
+    (test_pneu / "p1.jpg").touch()
+
+    result = discover_images(tmp_path)
+
+    assert sorted(result) == sorted([
+        (str(train_normal / "n1.jpg"), "NORMAL"),
+        (str(test_pneu / "p1.jpg"), "PNEUMONIA"),
+    ])
+
+
 def test_main_writes_split_manifests(tmp_path):
     normal_dir = tmp_path / "NORMAL"
     pneu_dir = tmp_path / "PNEUMONIA"
