@@ -1,4 +1,20 @@
+import torch
+
 NUM_CLASSES = 2
+
+
+@torch.no_grad()
+def predict(model, loader, device):
+    model.to(device)
+    model.eval()
+    y_true, y_pred, y_prob = [], [], []
+    for x, y in loader:
+        x = x.to(device)
+        probs = torch.softmax(model(x), dim=1)
+        y_true.extend(y.tolist())
+        y_pred.extend(probs.argmax(dim=1).cpu().tolist())
+        y_prob.extend(probs[:, 1].cpu().tolist())
+    return y_true, y_pred, y_prob
 
 
 def _confusion_matrix(y_true, y_pred):
