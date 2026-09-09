@@ -56,8 +56,10 @@ def main(argv=None):
     test_loader = DataLoader(test_ds, batch_size=32)
     paths = [path for path, _ in test_ds.items]
 
+    print(f"running inference on {len(test_ds)} test samples", flush=True)
     y_true, y_pred, y_prob = predict(model, test_loader, device)
     misclassified = find_misclassified(paths, y_true, y_pred, y_prob)
+    print(f"found {len(misclassified)} misclassified out of {len(y_true)}", flush=True)
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)

@@ -39,6 +39,7 @@ def main(argv=None):
     rows = []
     for fraction in fractions:
         subset = subsample_by_fraction(full_train_items, fraction=fraction, seed=args.seed)
+        print(f"[fraction {fraction}] n_train_samples={len(subset)}", flush=True)
         work_dir = out_dir / f"frac_{fraction}"
         work_dir.mkdir(parents=True, exist_ok=True)
         subset_manifest = work_dir / "train.csv"
@@ -64,6 +65,7 @@ def main(argv=None):
             "val_loss": last_row["val_loss"],
             "val_acc": last_row["val_acc"],
         })
+        print(f"[fraction {fraction}] val_loss={last_row['val_loss']} val_acc={last_row['val_acc']}", flush=True)
 
     with open(out_dir / "results.csv", "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["fraction", "n_train_samples", "val_loss", "val_acc"])
