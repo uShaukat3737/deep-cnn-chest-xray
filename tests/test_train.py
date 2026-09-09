@@ -1,6 +1,7 @@
+import torch
 import torch.nn as nn
 
-from src.train import Checkpointer, EarlyStopping
+from src.train import Checkpointer, EarlyStopping, train_one_epoch
 
 
 def test_early_stopping_triggers_after_patience_non_improving_epochs():
@@ -33,3 +34,24 @@ def test_checkpointer_saves_only_on_improvement(tmp_path):
     assert saved_2 is False
     assert saved_3 is True
     assert mtime_3 >= mtime_1
+
+
+def test_train_one_epoch_reduces_loss_on_synthetic_batch():
+    torch.manual_seed(0)
+    model = nn.Linear(4, 2)
+    x = torch.randn(16, 4)
+    y = torch.randint(0, 2, (16,))
+    loader = [(x, y)] * 5
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    criterion = nn.CrossEntropyLoss()
+
+    with torch.no_grad():
+        loss_before = criterion(model(x), y).item()
+
+    avg_loss = train_one_epoch(model, loader, optimizer, criterion, device="cpu")
+
+    with torch.no_grad():
+        loss_after = criterion(model(x), y).item()
+
+    assert isinstance(avg_loss, float)
+    assert loss_after < loss_before
