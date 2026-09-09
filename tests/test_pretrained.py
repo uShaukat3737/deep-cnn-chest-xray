@@ -14,3 +14,12 @@ def test_frozen_resnet50_freezes_backbone_but_not_head():
 
     out = model(torch.randn(2, 3, 224, 224))
     assert out.shape == (2, 2)
+
+
+def test_finetune_mobilenetv2_leaves_all_params_trainable():
+    model = build_model("mobilenetv2", mode="finetune", pretrained=False, num_classes=2)
+
+    assert all(p.requires_grad for p in model.parameters())
+
+    out = model(torch.randn(2, 3, 224, 224))
+    assert out.shape == (2, 2)
