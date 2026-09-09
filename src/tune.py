@@ -50,3 +50,12 @@ def run_trial(config, model, mode, train_manifest, val_manifest, epochs, work_di
     with open(log_path) as f:
         last_row = list(csv.DictReader(f))[-1]
     return {"val_loss": float(last_row["val_loss"]), "val_acc": float(last_row["val_acc"])}
+
+
+def build_summary_table(search_space, configs, results):
+    best_idx = min(range(len(results)), key=lambda i: results[i]["val_loss"])
+    best_config = configs[best_idx]
+    return [
+        {"hyperparameter": name, "range": values, "optimal": best_config[name]}
+        for name, values in search_space.items()
+    ]
