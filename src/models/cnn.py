@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 
@@ -34,3 +35,27 @@ class ChestCNN(nn.Module):
         x = self.features(x)
         x = self.gap(x)
         return self.classifier(x)
+
+
+def layer_table(model, input_shape):
+    rows = []
+    hooks = []
+
+    def make_hook(name):
+        def hook(module, inp, out):
+            param_count = sum(p.numel() for p in module.parameters(recurse=False))
+            rows.append((name, tuple(out.shape), param_count))
+        return hook
+
+    for name, module in model.named_modules():
+        if name and len(list(module.children())) == 0:
+            hooks.append(module.register_forward_hook(make_hook(name)))
+
+    model.eval()
+    with torch.no_grad():
+        model(torch.randn(*input_shape))
+
+    for h in hooks:
+        h.remove()
+
+    return rows
