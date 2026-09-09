@@ -1,6 +1,8 @@
+import csv
+
 import torch
 
-from src.dataset import build_transforms
+from src.dataset import ChestXrayDataset, build_transforms
 
 
 def test_train_transform_is_stochastic_val_transform_is_deterministic():
@@ -19,3 +21,28 @@ def test_train_transform_is_stochastic_val_transform_is_deterministic():
     val_out2 = val_tf(img)
     assert torch.equal(val_out1, val_out2)
     assert val_out1.shape == (3, 224, 224)
+
+
+def test_chest_xray_dataset_returns_tensor_and_int_label(tmp_path):
+    from PIL import Image
+
+    img_path = tmp_path / "img.jpg"
+    Image.new("RGB", (50, 50), "white").save(img_path)
+
+    manifest = tmp_path / "manifest.csv"
+    with open(manifest, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["path", "label"])
+        writer.writerow([str(img_path), "NORMAL"])
+        writer.writerow([str(img_path), "PNEUMONIA"])
+
+    _, val_tf = build_transforms()
+    ds = ChestXrayDataset(manifest, transform=val_tf)
+
+    assert len(ds) == 2
+    img_tensor, label = ds[0]
+    assert img_tensor.shape == (3, 224, 224)
+    assert label == 0
+
+    _, label2 = ds[1]
+    assert label2 == 1
