@@ -11,14 +11,18 @@ from src.models.cnn import ChestCNN
 from src.models.pretrained import build_model
 
 
-def train_one_epoch(model, loader, optimizer, criterion, device, clip_norm=1.0):
+def l1_penalty(model, lam):
+    return lam * sum(p.abs().sum() for p in model.parameters())
+
+
+def train_one_epoch(model, loader, optimizer, criterion, device, clip_norm=1.0, l1_lambda=0.0):
     model.to(device)
     model.train()
     total_loss = 0.0
     for x, y in loader:
         x, y = x.to(device), y.to(device)
         optimizer.zero_grad()
-        loss = criterion(model(x), y)
+        loss = criterion(model(x), y) + l1_penalty(model, l1_lambda)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), clip_norm)
         optimizer.step()
