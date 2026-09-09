@@ -112,3 +112,29 @@ def test_main_trains_cnn_and_writes_checkpoint_and_log(tmp_path):
         rows = list(csv.reader(f))
     assert rows[0] == ["epoch", "train_loss", "val_loss", "val_acc"]
     assert len(rows) == 2
+
+
+def test_main_accepts_norm_scheme_augmentation_and_l1_flags(tmp_path):
+    train_manifest = tmp_path / "train.csv"
+    val_manifest = tmp_path / "val.csv"
+    _write_manifest(train_manifest)
+    _write_manifest(val_manifest)
+
+    checkpoint_dir = tmp_path / "checkpoints"
+    log_path = tmp_path / "log.csv"
+
+    main([
+        "--model", "cnn",
+        "--mode", "scratch",
+        "--train-manifest", str(train_manifest),
+        "--val-manifest", str(val_manifest),
+        "--epochs", "1",
+        "--batch-size", "4",
+        "--checkpoint-dir", str(checkpoint_dir),
+        "--log-path", str(log_path),
+        "--norm-scheme", "dataset_stats",
+        "--augmentation", "off",
+        "--l1", "1e-4",
+    ])
+
+    assert (checkpoint_dir / "cnn_scratch_best.pth").exists()
