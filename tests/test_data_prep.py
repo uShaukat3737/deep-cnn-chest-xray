@@ -1,6 +1,6 @@
 from PIL import Image
 
-from src.data_prep import filter_corrupt, stratified_split
+from src.data_prep import dedupe_by_hash, filter_corrupt, stratified_split
 
 
 def test_stratified_split_ratios_and_no_overlap():
@@ -34,3 +34,19 @@ def test_filter_corrupt_excludes_unreadable_files(tmp_path):
     result = filter_corrupt(items)
 
     assert result == [(str(good), "NORMAL")]
+
+
+def test_dedupe_by_hash_drops_identical_pixel_content(tmp_path):
+    a = tmp_path / "a.jpg"
+    b = tmp_path / "b.jpg"
+    c = tmp_path / "c.jpg"
+    Image.new("RGB", (10, 10), "white").save(a)
+    Image.new("RGB", (10, 10), "white").save(b)
+    Image.new("RGB", (10, 10), "black").save(c)
+
+    items = [(str(a), "NORMAL"), (str(b), "NORMAL"), (str(c), "NORMAL")]
+    result = dedupe_by_hash(items)
+
+    assert len(result) == 2
+    assert (str(a), "NORMAL") in result
+    assert (str(c), "NORMAL") in result
