@@ -62,6 +62,21 @@ def stratified_split(items, seed, ratios=(0.8, 0.1, 0.1)):
     return train, val, test
 
 
+def subsample_by_fraction(items, fraction, seed):
+    by_label = {}
+    for path, label in items:
+        by_label.setdefault(label, []).append((path, label))
+
+    rng = random.Random(seed)
+    result = []
+    for label_items in by_label.values():
+        shuffled = label_items[:]
+        rng.shuffle(shuffled)
+        n = round(len(shuffled) * fraction)
+        result.extend(shuffled[:n])
+    return result
+
+
 def _write_manifest(path, items):
     with open(path, "w", newline="") as f:
         writer = csv.writer(f)
