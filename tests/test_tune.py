@@ -1,6 +1,6 @@
 import csv
 
-from src.tune import run_trial, sample_configs
+from src.tune import build_summary_table, run_trial, sample_configs
 
 
 def test_sample_configs_returns_unique_deterministic_configs():
@@ -57,3 +57,22 @@ def test_run_trial_returns_metrics_and_writes_checkpoint(tmp_path):
     assert "val_loss" in result and "val_acc" in result
     assert isinstance(result["val_loss"], float)
     assert (work_dir / "checkpoints" / "cnn_scratch_best.pth").exists()
+
+
+def test_build_summary_table_reports_range_and_optimal_from_best_trial():
+    search_space = {"batch_size": [16, 32], "lr": [1e-2, 1e-3]}
+    configs = [
+        {"batch_size": 16, "lr": 1e-2},
+        {"batch_size": 32, "lr": 1e-3},
+    ]
+    results = [
+        {"val_loss": 0.9, "val_acc": 0.7},
+        {"val_loss": 0.3, "val_acc": 0.9},  # best (lowest val_loss)
+    ]
+
+    table = build_summary_table(search_space, configs, results)
+
+    rows_by_name = {row["hyperparameter"]: row for row in table}
+    assert rows_by_name["batch_size"]["range"] == [16, 32]
+    assert rows_by_name["batch_size"]["optimal"] == 32
+    assert rows_by_name["lr"]["optimal"] == 1e-3
